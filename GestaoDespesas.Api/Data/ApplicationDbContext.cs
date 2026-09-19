@@ -15,6 +15,19 @@ namespace GestaoDespesas.Api.Data
         {
         }
 
-        public DbSet<Category> Categories { get; set; } = null!;
+        public DbSet<Category> Categories { get; set; } 
+        public DbSet<Expense> Expenses { get; set; } 
+
+        // Additional EF Core configuration that goes beyond simple property attributes
+protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    base.OnModelCreating(modelBuilder);
+
+    // Explicitly define precision and scale for monetary values:
+    // 18 total digits, 2 of which are after the decimal point (e.g. 123456789012345.67)
+    modelBuilder.Entity<Expense>()
+        .Property(e => e.Amount)
+        .HasPrecision(18, 2);
+}
     }
 }
