@@ -31,27 +31,54 @@ public class ExpensesController : ControllerBase
     // GET /api/expenses
     // Returns all expenses belonging to the authenticated user,
     // including the related category name
-    [HttpGet]
-    public async Task<ActionResult<IEnumerable<ExpenseDto>>> GetExpenses()
+    // GET /api/expenses
+// GET /api/expenses?startDate=2026-09-01&endDate=2026-09-30&categoryId=2
+// Returns all expenses belonging to the authenticated user,
+// optionally filtered by date range and/or category
+[HttpGet]
+public async Task<ActionResult<IEnumerable<ExpenseDto>>> GetExpenses(
+    [FromQuery] DateTime? startDate,
+    [FromQuery] DateTime? endDate,
+    [FromQuery] int? categoryId)
+{
+    var userId = GetUserId();
+
+    // Start with the base query: all expenses for this user
+    var query = _context.Expenses
+        .Where(e => e.UserId == userId);
+
+    // Apply filters only when the client actually provided them
+    if (startDate.HasValue)
     {
-        var userId = GetUserId();
-
-        var expenses = await _context.Expenses
-            .Where(e => e.UserId == userId)
-            .Include(e => e.Category)
-            .Select(e => new ExpenseDto
-            {
-                Id = e.Id,
-                Description = e.Description,
-                Amount = e.Amount,
-                Date = e.Date,
-                CategoryId = e.CategoryId,
-                CategoryName = e.Category != null ? e.Category.Name : string.Empty
-            })
-            .ToListAsync();
-
-        return Ok(expenses);
+        query = query.Where(e => e.Date >= startDate.Value);
     }
+
+    if (endDate.HasValue)
+    {
+        query = query.Where(e => e.Date <= endDate.Value);
+    }
+
+    if (categoryId.HasValue)
+    {
+        query = query.Where(e => e.CategoryId == categoryId.Value);
+    }
+
+    var expenses = await query
+        .Include(e => e.Category)
+        .OrderByDescending(e => e.Date)
+        .Select(e => new ExpenseDto
+        {
+            Id = e.Id,
+            Description = e.Description,
+            Amount = e.Amount,
+            Date = e.Date,
+            CategoryId = e.CategoryId,
+            CategoryName = e.Category != null ? e.Category.Name : string.Empty
+        })
+        .ToListAsync();
+
+    return Ok(expenses);
+}
 
     // GET /api/expenses/{id}
     [HttpGet("{id}")]
